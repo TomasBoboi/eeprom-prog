@@ -170,15 +170,47 @@ void EeP_EraseChip()
 void setup()
 {
     EeP_Init();
-
-    for (uint16_t address_u16 = EEPROM_START_ADDRESS; address_u16 < 4096; address_u16 += EEPROM_BLOCK_SIZE)
-    {
-        Serial.println(Utils_BlockToString(address_u16, EeP_ReadBlock(address_u16)));
-    }
-
-    Serial.println("done!");
 }
 
 void loop()
 {
+    Utils_PrintMenu();
+
+    while (Serial.available() == 0)
+        ;
+
+    int choice = Serial.read();
+    Serial.print(choice - '0');
+
+    uint16_t address_u16;
+    switch (choice)
+    {
+    case '1':
+        address_u16 = Utils_GetAddressFromSerial();
+
+        Serial.print(Utils_AddressToHexString(address_u16));
+        Serial.print(": ");
+        Serial.println(Utils_ByteToHexString(EeP_ReadByte(address_u16)));
+        break;
+
+    case '2':
+        address_u16 = Utils_GetAddressFromSerial();
+
+        Serial.println(Utils_BlockToString(address_u16, EeP_ReadBlock(address_u16)));
+        break;
+
+    case '5':
+        Serial.println();
+        Serial.println("This will erase all data on the chip! Do you wish to continue? (y/n) ");
+        while (Serial.available() == 0)
+            ;
+
+        if (Serial.read() == 'y')
+            EeP_EraseChip();
+        break;
+
+    default:
+        Serial.println("Invalid choice!");
+        break;
+    }
 }

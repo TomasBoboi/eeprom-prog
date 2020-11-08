@@ -21,6 +21,22 @@ char Utils_DigitToHexChar(uint8_t digit_u8)
     return result_c;
 }
 
+uint8_t Utils_HexCharToDigit(char hexDigit_c)
+{
+    uint8_t digit_u8;
+
+    if (hexDigit_c >= '0' && hexDigit_c <= '9')
+        digit_u8 = hexDigit_c - '0';
+    else if (hexDigit_c >= 'A' && hexDigit_c <= 'F')
+        digit_u8 = hexDigit_c - 'A' + 10;
+    else if (hexDigit_c >= 'a' && hexDigit_c <= 'f')
+        digit_u8 = Utils_HexCharToDigit(hexDigit_c - 'a' + 'A');
+    else
+        digit_u8 = 0;
+
+    return digit_u8;
+}
+
 char *Utils_AddressToHexString(uint16_t address_u16)
 {
     static char addressAsString_ac[9];
@@ -88,4 +104,52 @@ char *Utils_BlockToString(uint16_t startAddress_u16, uint8_t *block_pu8)
     }
 
     return blockAsString_pc;
+}
+
+uint16_t Utils_GetAddressFromSerial()
+{
+    Serial.println();
+    Serial.print("Address: ");
+
+    while (Serial.available() < 6)
+        ;
+
+    char addressAsString_ca[7];
+    for (uint8_t index_u8 = 0; index_u8 < 6; index_u8++)
+    {
+        addressAsString_ca[index_u8] = Serial.read();
+    }
+    addressAsString_ca[6] = '\0';
+
+    uint16_t address_u16 = Utils_AddressFromHexString(addressAsString_ca);
+
+    Serial.print(addressAsString_ca);
+    Serial.println();
+
+    return address_u16;
+}
+
+uint16_t Utils_AddressFromHexString(char addressAsString[7])
+{
+    uint16_t address_u16 = 0x0000;
+
+    address_u16 = (address_u16 | Utils_HexCharToDigit(addressAsString[2])) << 4;
+    address_u16 = (address_u16 | Utils_HexCharToDigit(addressAsString[3])) << 4;
+    address_u16 = (address_u16 | Utils_HexCharToDigit(addressAsString[4])) << 4;
+    address_u16 = (address_u16 | Utils_HexCharToDigit(addressAsString[5]));
+
+    return address_u16;
+}
+
+void Utils_PrintMenu()
+{
+    Serial.println();
+    Serial.println("-------------------------");
+    Serial.println("1. Read byte");
+    Serial.println("2. Read block");
+    Serial.println("3. Write byte");
+    Serial.println("4. Write block");
+    Serial.println("5. Erase chip");
+    Serial.println("-------------------------");
+    Serial.print("Choice: ");
 }
