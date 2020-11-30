@@ -183,6 +183,7 @@ void loop()
     Serial.print(choice - '0');
 
     uint16_t address_u16;
+    uint8_t dataByte_u8;
     switch (choice)
     {
     case '1':
@@ -198,6 +199,30 @@ void loop()
 
         Serial.println(Utils_BlockToString(address_u16, EeP_ReadBlock(address_u16)));
         break;
+    
+    case '3':
+        address_u16 = Utils_GetAddressFromSerial();
+        dataByte_u8 = Utils_GetByteFromSerial();
+
+        EeP_WriteByte(address_u16, dataByte_u8);
+        Serial.println("Written successfully");
+        break;
+    
+    case '4':
+        address_u16 = Utils_GetAddressFromSerial();
+
+        for(uint8_t index_u8 = 0; index_u8 < EEPROM_BLOCK_SIZE; index_u8++)
+        {
+            dataByte_u8 = Utils_GetByteFromSerial();
+            EeP_WriteByte(address_u16, dataByte_u8);
+
+            if(address_u16 + 1 < EEPROM_END_ADDRESS)
+                address_u16++;
+            
+            Serial.print(dataByte_u8, HEX);Serial.print(" ");
+        }
+        Serial.println();
+        break;
 
     case '5':
         Serial.println();
@@ -206,7 +231,13 @@ void loop()
             ;
 
         if (Serial.read() == 'y')
+        {
+            Serial.println("Erasing...");
             EeP_EraseChip();
+
+            while(Serial.available() > 0)
+                (void)Serial.read();
+        }
         break;
 
     default:

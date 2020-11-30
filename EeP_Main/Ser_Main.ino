@@ -2,7 +2,7 @@
 
 void Ser_Init()
 {
-    Serial.begin(9600);
+    Serial.begin(SERIAL_BAUD_RATE);
 
     pinMode(SERIAL_DATA_PIN, OUTPUT);
     pinMode(SERIAL_RCLK_PIN, OUTPUT);

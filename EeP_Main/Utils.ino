@@ -129,6 +129,19 @@ uint16_t Utils_GetAddressFromSerial()
     return address_u16;
 }
 
+uint8_t Utils_GetByteFromSerial()
+{
+    Serial.print("Data: ");
+
+    while(Serial.available() < 2);
+
+    uint8_t byte_u8 = 0x00;
+    byte_u8 = (byte_u8 | Utils_HexCharToDigit((char)Serial.read())) << 4;
+    byte_u8 = byte_u8 | Utils_HexCharToDigit((char)Serial.read());
+
+    return byte_u8;
+}
+
 uint16_t Utils_AddressFromHexString(char addressAsString[7])
 {
     uint16_t address_u16 = 0x0000;
@@ -144,12 +157,12 @@ uint16_t Utils_AddressFromHexString(char addressAsString[7])
 void Utils_PrintMenu()
 {
     Serial.println();
-    Serial.println("-------------------------");
-    Serial.println("1. Read byte");
-    Serial.println("2. Read block");
-    Serial.println("3. Write byte");
-    Serial.println("4. Write block");
-    Serial.println("5. Erase chip");
-    Serial.println("-------------------------");
+    Serial.println("┌─────────────────────────┐");
+    Serial.println("│ 1. Read byte            │");
+    Serial.println("│ 2. Read block           │");
+    Serial.println("│ 3. Write byte           │");
+    Serial.println("│ 4. Write block          │");
+    Serial.println("│ 5. Erase chip           │");
+    Serial.println("└─────────────────────────┘");
     Serial.print("Choice: ");
 }

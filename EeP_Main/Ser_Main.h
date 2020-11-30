@@ -5,7 +5,7 @@
 #define SERIAL_RCLK_PIN 3
 #define SERIAL_SCLK_PIN 4
 
-#define SERIAL_BAUD_RATE 9600
+#define SERIAL_BAUD_RATE 115200
 
 void Ser_Init();
 void Ser_SendSerialBit(uint8_t bit_u8);

@@ -10,6 +10,7 @@ char *Utils_FourBytesToString(uint8_t bytes_au8[4]);
 char *Utils_BlockToString(uint16_t startAddress_u16, uint8_t *block_pu8);
 
 uint16_t Utils_GetAddressFromSerial();
+uint8_t Utils_GetByteFromSerial();
 uint16_t Utils_AddressFromHexString(char addressAsString[7]);
 
 void Utils_PrintMenu();
