@@ -18,10 +18,22 @@ typedef enum
     CHIP_DATA_PIN_6,
     CHIP_DATA_PIN_7
 } EeP_ChipDataPins_en;
+
+typedef enum
+{
+    MENU_CHOICE_BEGIN,
+    MENU_CHOICE_READ_BYTE,
+    MENU_CHOICE_READ_BLOCK,
+    MENU_CHOICE_READ_N_BLOCKS,
+    MENU_CHOICE_WRITE_BYTE,
+    MENU_CHOICE_WRITE_BLOCK,
+    MENU_CHOICE_ERASE_CHIP,
+    MENU_CHOICE_END
+} EeP_MenuChoice_en;
 /* ------------------------- </TYPES> ------------------------- */
 
 /* ------------------------- <VARIABLES> ------------------------- */
-const uint8_t EeP_ChipDataPins_au8[EEPROM_DATA_PINS_NO] =
+const uint8_t EeP_ChipDataPins_au8[EEPROM_DATA_PINS_NO_U8] =
     {CHIP_DATA_PIN_0,
      CHIP_DATA_PIN_1,
      CHIP_DATA_PIN_2,
@@ -53,7 +65,7 @@ void EeP_Init()
 {
     Ser_Init();
 
-    for (uint8_t index_u8 = 0; index_u8 < EEPROM_DATA_PINS_NO; index_u8++)
+    for (uint8_t index_u8 = 0; index_u8 < EEPROM_DATA_PINS_NO_U8; index_u8++)
     {
         pinMode(EeP_ChipDataPins_au8[index_u8], OUTPUT);
     }
@@ -61,10 +73,12 @@ void EeP_Init()
     pinMode(CHIP_N_OE, OUTPUT);
     digitalWrite(CHIP_N_OE, HIGH);
 
-    for (uint8_t index_u8 = 0; index_u8 < EEPROM_DATA_PINS_NO; index_u8++)
+    for (uint8_t index_u8 = 0; index_u8 < EEPROM_DATA_PINS_NO_U8; index_u8++)
     {
         digitalWrite(EeP_ChipDataPins_au8[index_u8], LOW);
     }
+
+    Utils_PrintMenu();
 }
 
 void EeP_WriteAddressAndWrE(uint16_t address_u16, uint8_t nWriteEnable_u8)
@@ -81,12 +95,12 @@ void EeP_WriteDataOutputs(uint8_t data_u8)
 {
     digitalWrite(CHIP_N_OE, HIGH);
 
-    for (uint8_t index_u8 = 0; index_u8 < EEPROM_DATA_PINS_NO; index_u8++)
+    for (uint8_t index_u8 = 0; index_u8 < EEPROM_DATA_PINS_NO_U8; index_u8++)
     {
         pinMode(EeP_ChipDataPins_au8[index_u8], OUTPUT);
     }
 
-    for (uint8_t index_u8 = 0; index_u8 < EEPROM_DATA_PINS_NO; index_u8++)
+    for (uint8_t index_u8 = 0; index_u8 < EEPROM_DATA_PINS_NO_U8; index_u8++)
     {
         digitalWrite(EeP_ChipDataPins_au8[index_u8], (data_u8 >> index_u8) & 0x01);
     }
@@ -94,7 +108,7 @@ void EeP_WriteDataOutputs(uint8_t data_u8)
 
 uint8_t EeP_ReadDataOutputs()
 {
-    for (uint8_t index_u8 = 0; index_u8 < EEPROM_DATA_PINS_NO; index_u8++)
+    for (uint8_t index_u8 = 0; index_u8 < EEPROM_DATA_PINS_NO_U8; index_u8++)
     {
         pinMode(EeP_ChipDataPins_au8[index_u8], INPUT);
     }
@@ -102,7 +116,7 @@ uint8_t EeP_ReadDataOutputs()
     digitalWrite(CHIP_N_OE, LOW);
 
     uint8_t readData_u8 = 0x00;
-    for (int8_t index_u8 = EEPROM_DATA_PINS_NO - 1; index_u8 >= 0; index_u8--)
+    for (int8_t index_u8 = EEPROM_DATA_PINS_NO_U8 - 1; index_u8 >= 0; index_u8--)
     {
         if (index_u8 != 0)
         {
@@ -123,7 +137,7 @@ void EeP_WriteByte(uint16_t address_u16, uint8_t data_u8)
 
     EeP_WriteDataOutputs(data_u8);
 
-    delay(EEPROM_WRITE_DELAY);
+    delay(EEPROM_WRITE_DELAY_U32);
 
     EeP_WriteAddressAndWrE(address_u16, HIGH);
 }
@@ -140,7 +154,7 @@ uint8_t EeP_ReadByte(uint16_t address_u16)
 
 void EeP_WriteBlock(uint16_t address_u16, uint8_t *block_pu8)
 {
-    for (uint16_t index_u16 = address_u16; index_u16 < address_u16 + EEPROM_BLOCK_SIZE && index_u16 <= EEPROM_END_ADDRESS; index_u16++)
+    for (uint16_t index_u16 = address_u16; index_u16 < address_u16 + EEPROM_BLOCK_SIZE_U16 && index_u16 <= EEPROM_END_ADDRESS_U16; index_u16++)
     {
         EeP_WriteByte(index_u16, block_pu8[index_u16 - address_u16]);
     }
@@ -148,11 +162,20 @@ void EeP_WriteBlock(uint16_t address_u16, uint8_t *block_pu8)
 
 uint8_t *EeP_ReadBlock(uint16_t offset_u16)
 {
-    static uint8_t blockContent_au8[EEPROM_BLOCK_SIZE] = {0};
+    static uint8_t blockContent_au8[EEPROM_BLOCK_SIZE_U16] = {0};
 
-    for (uint16_t index_u16 = offset_u16; index_u16 < offset_u16 + EEPROM_BLOCK_SIZE && index_u16 <= EEPROM_END_ADDRESS; index_u16++)
+    if(offset_u16 > EEPROM_END_ADDRESS_U16)
     {
-        blockContent_au8[index_u16 - offset_u16] = EeP_ReadByte(index_u16);
+        Serial.print("ERROR: ");
+        Serial.print(offset_u16);
+        Serial.println(" exceeds the chip's address space!");
+    }
+    else
+    {
+        for (uint16_t index_u16 = offset_u16; index_u16 < offset_u16 + EEPROM_BLOCK_SIZE_U16 && index_u16 <= EEPROM_END_ADDRESS_U16; index_u16++)
+        {
+            blockContent_au8[index_u16 - offset_u16] = EeP_ReadByte(index_u16);
+        }
     }
 
     return blockContent_au8;
@@ -160,9 +183,9 @@ uint8_t *EeP_ReadBlock(uint16_t offset_u16)
 
 void EeP_EraseChip()
 {
-    for (uint16_t address_u16 = EEPROM_START_ADDRESS; address_u16 < EEPROM_END_ADDRESS; address_u16++)
+    for (uint16_t address_u16 = EEPROM_START_ADDRESS_U16; address_u16 < EEPROM_END_ADDRESS_U16; address_u16++)
     {
-        EeP_WriteByte(address_u16, 0xFF);
+        EeP_WriteByte(address_u16, EEPROM_ERASED_BYTE_VALUE_U8);
     }
 }
 /* ------------------------- </IMPLEMENTATIONS> ------------------------- */
@@ -174,57 +197,84 @@ void setup()
 
 void loop()
 {
-    Utils_PrintMenu();
-
-    while (Serial.available() == 0)
-        ;
-
-    int choice = Serial.read();
-    Serial.print(choice - '0');
-
+    uint32_t menuChoice_u32 = Utils_GetNumberFromSerial("Choice: ");
+    uint32_t numberOfBlocks_u32;
     uint16_t address_u16;
     uint8_t dataByte_u8;
-    switch (choice)
+
+    switch (menuChoice_u32)
     {
-    case '1':
-        address_u16 = Utils_GetAddressFromSerial();
+    case MENU_CHOICE_READ_BYTE:
+        address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
 
-        Serial.print(Utils_AddressToHexString(address_u16));
-        Serial.print(": ");
-        Serial.println(Utils_ByteToHexString(EeP_ReadByte(address_u16)));
+        if(address_u16 >= EEPROM_START_ADDRESS_U16 && address_u16 <= EEPROM_END_ADDRESS_U16)
+        {
+            Serial.println();
+            Serial.print(Utils_AddressToHexString(address_u16));
+            Serial.print(": ");
+            Serial.println(Utils_ByteToHexString(EeP_ReadByte(address_u16)));
+        }
+        else
+        {
+            Serial.print("ERROR: ");
+            Serial.print(Utils_AddressToHexString(address_u16));
+            Serial.println(" exceeds the chip's address space!");
+        }
         break;
 
-    case '2':
-        address_u16 = Utils_GetAddressFromSerial();
+    case MENU_CHOICE_READ_BLOCK:
+        address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
 
-        Serial.println(Utils_BlockToString(address_u16, EeP_ReadBlock(address_u16)));
+        if(address_u16 >= EEPROM_START_ADDRESS_U16 && address_u16 <= EEPROM_END_ADDRESS_U16)
+        {
+            Serial.println();
+            Serial.println(Utils_BlockToString(address_u16, EeP_ReadBlock(address_u16)));
+        }
+        else
+        {
+            Serial.print("ERROR: ");
+            Serial.print(Utils_AddressToHexString(address_u16));
+            Serial.println(" exceeds the chip's address space!");
+        }
         break;
-    
-    case '3':
-        address_u16 = Utils_GetAddressFromSerial();
-        dataByte_u8 = Utils_GetByteFromSerial();
+
+    case MENU_CHOICE_READ_N_BLOCKS:
+        numberOfBlocks_u32 = Utils_GetNumberFromSerial("Number of blocks: ");
+        address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
+
+        Serial.println();
+        for (uint32_t index_u32 = 0; index_u32 < numberOfBlocks_u32; index_u32++)
+        {
+            Serial.println(Utils_BlockToString(address_u16, EeP_ReadBlock(address_u16)));
+
+            address_u16 += EEPROM_BLOCK_SIZE_U16;
+        }
+        break;
+
+    case MENU_CHOICE_WRITE_BYTE:
+        address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
+        dataByte_u8 = (uint8_t)Utils_GetNumberFromSerial("Data ([0x00-0xFF]/[0-255]): ");
 
         EeP_WriteByte(address_u16, dataByte_u8);
+        Serial.println();
         Serial.println("Written successfully");
         break;
-    
-    case '4':
-        address_u16 = Utils_GetAddressFromSerial();
 
-        for(uint8_t index_u8 = 0; index_u8 < EEPROM_BLOCK_SIZE; index_u8++)
+    case MENU_CHOICE_WRITE_BLOCK:
+        address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
+
+        for (uint8_t index_u8 = 0; index_u8 < EEPROM_BLOCK_SIZE_U16; index_u8++)
         {
-            dataByte_u8 = Utils_GetByteFromSerial();
+            dataByte_u8 = (uint8_t)Utils_GetNumberFromSerial("Data ([0x00-0xFF]/[0-255]): ");
             EeP_WriteByte(address_u16, dataByte_u8);
 
-            if(address_u16 + 1 < EEPROM_END_ADDRESS)
+            if (address_u16 + 1 < EEPROM_END_ADDRESS_U16)
                 address_u16++;
-            
-            Serial.print(dataByte_u8, HEX);Serial.print(" ");
         }
         Serial.println();
         break;
 
-    case '5':
+    case MENU_CHOICE_ERASE_CHIP:
         Serial.println();
         Serial.println("This will erase all data on the chip! Do you wish to continue? (y/n) ");
         while (Serial.available() == 0)
@@ -235,13 +285,13 @@ void loop()
             Serial.println("Erasing...");
             EeP_EraseChip();
 
-            while(Serial.available() > 0)
+            while (Serial.available() > 0)
                 (void)Serial.read();
         }
         break;
 
     default:
-        Serial.println("Invalid choice!");
+        Serial.println("ERROR: Invalid choice!");
         break;
     }
 }
