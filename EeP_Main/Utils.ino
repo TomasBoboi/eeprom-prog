@@ -67,10 +67,10 @@ char *Utils_FourBytesToString(uint8_t bytes_au8[4])
 
 char *Utils_BlockToString(uint16_t startAddress_u16, uint8_t *block_pu8)
 {
-    static char blockAsString_pc[6 * EEPROM_BLOCK_SIZE_U16 + EEPROM_BLOCK_SIZE_U16 / 4 + 11];
+    static char blockAsString_ach[6 * EEPROM_BLOCK_SIZE_U16 + EEPROM_BLOCK_SIZE_U16 / 4 + 12];
 
-    strcpy(blockAsString_pc, Utils_AddressToHexString(startAddress_u16));
-    strcat(blockAsString_pc, ": ");
+    strcpy(blockAsString_ach, Utils_AddressToHexString(startAddress_u16));
+    strcat(blockAsString_ach, ": ");
 
     for (uint8_t index_u8 = 0; index_u8 < EEPROM_BLOCK_SIZE_U16; index_u8 += 4)
     {
@@ -81,11 +81,11 @@ char *Utils_BlockToString(uint16_t startAddress_u16, uint8_t *block_pu8)
         fourBytesAsArray_au8[3] = block_pu8[index_u8 + 3];
 
         char *fourBytesAsString_pc = Utils_FourBytesToString(fourBytesAsArray_au8);
-        strcat(blockAsString_pc, fourBytesAsString_pc);
-        strcat(blockAsString_pc, "  ");
+        strcat(blockAsString_ach, fourBytesAsString_pc);
+        strcat(blockAsString_ach, "  ");
     }
     
-    strcat(blockAsString_pc, "|  ");
+    strcat(blockAsString_ach, "|  ");
 
     for (uint8_t index_u8 = 0; index_u8 < EEPROM_BLOCK_SIZE_U16; index_u8++)
     {
@@ -96,10 +96,10 @@ char *Utils_BlockToString(uint16_t startAddress_u16, uint8_t *block_pu8)
             dataAsChar_ach[0] = block_pu8[index_u8];
         }
 
-        strcat(blockAsString_pc, dataAsChar_ach);
+        strcat(blockAsString_ach, dataAsChar_ach);
     }
 
-    return blockAsString_pc;
+    return blockAsString_ach;
 }
 
 uint32_t Utils_GetNumberFromSerial(const char * tag_pch)
@@ -138,6 +138,9 @@ void Utils_PrintMenu()
     Serial.println("│ 3. Read N blocks        │");
     Serial.println("│ 4. Write byte           │");
     Serial.println("│ 5. Write block          │");
-    Serial.println("│ 6. Erase chip           │");
+    Serial.println("│ 6. Write N blocks       │");
+    Serial.println("│ 7. Erase byte           │");
+    Serial.println("│ 8. Erase block          │");
+    Serial.println("│ 9. Erase chip           │");
     Serial.println("└─────────────────────────┘");
 }
