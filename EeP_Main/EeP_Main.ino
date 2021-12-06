@@ -9,6 +9,12 @@
 /* ------------------------- <TYPES> ------------------------- */
 typedef enum
 {
+    STATUS_OK,
+    STATUS_NOT_OK
+} EeP_ReturnStatus_en;
+
+typedef enum
+{
     CHIP_DATA_PIN_0 = 5,
     CHIP_DATA_PIN_1,
     CHIP_DATA_PIN_2,
@@ -58,16 +64,16 @@ void EeP_WriteAddressAndWrE(uint16_t address_u16, uint8_t nWriteEnable_u8);
 void EeP_WriteDataOutputs(uint8_t data_u8);
 uint8_t EeP_ReadDataOutputs();
 
-void EeP_WriteByte(uint16_t address_u16, uint8_t dataByte_u8);
-uint8_t EeP_ReadByte(uint16_t address_u16);
+EeP_ReturnStatus_en EeP_WriteByte(uint16_t address_u16, uint8_t dataByte_u8);
+EeP_ReturnStatus_en EeP_ReadByte(uint16_t address_u16, uint8_t * dataByte_pu8);
 
-void EeP_WriteBlock(uint16_t startAddress_u16, uint8_t *dataBlock_pu8);
-uint8_t * EeP_ReadBlock(uint16_t startAddress_u16);
+EeP_ReturnStatus_en EeP_WriteBlock(uint16_t startAddress_u16, uint8_t *dataBlock_pu8);
+EeP_ReturnStatus_en EeP_ReadBlock(uint16_t startAddress_u16, uint8_t * dataBlock_pu8);
 
-void EeP_EraseByte(uint16_t address_u16);
-void EeP_EraseBlock(uint16_t startAddress_u16);
-void EeP_EraseNBlocks(uint16_t startAddress_u16, uint16_t numberOfBlocks_u16);
-void EeP_EraseChip();
+EeP_ReturnStatus_en EeP_EraseByte(uint16_t address_u16);
+EeP_ReturnStatus_en EeP_EraseBlock(uint16_t startAddress_u16);
+EeP_ReturnStatus_en EeP_EraseNBlocks(uint16_t startAddress_u16, uint16_t numberOfBlocks_u16);
+EeP_ReturnStatus_en EeP_EraseChip();
 /* ------------------------- </FUNCTIONS> ------------------------- */
 
 /* ------------------------- <IMPLEMENTATIONS> ------------------------- */
@@ -75,17 +81,14 @@ void EeP_Init()
 {
     Ser_Init();
 
-    for (uint8_t index_u8 = 0; index_u8 < EEPROM_DATA_PINS_NO_U8; index_u8++)
-    {
-        pinMode(EeP_ChipDataPins_au8[index_u8], OUTPUT);
-    }
-
     pinMode(CHIP_N_OE, OUTPUT);
     digitalWrite(CHIP_N_OE, HIGH);
 
+    EeP_WriteAddressAndWrE((uint16_t)0x0000, HIGH);
+
     for (uint8_t index_u8 = 0; index_u8 < EEPROM_DATA_PINS_NO_U8; index_u8++)
     {
-        digitalWrite(EeP_ChipDataPins_au8[index_u8], LOW);
+        pinMode(EeP_ChipDataPins_au8[index_u8], INPUT);
     }
 
     Utils_PrintMenu();
@@ -141,11 +144,13 @@ uint8_t EeP_ReadDataOutputs()
     return readData_u8;
 }
 
-void EeP_WriteByte(uint16_t address_u16, uint8_t dataByte_u8)
+EeP_ReturnStatus_en EeP_WriteByte(uint16_t address_u16, uint8_t dataByte_u8)
 {
+    EeP_ReturnStatus_en returnStatus_en = STATUS_OK;
+
     if(address_u16 < EEPROM_START_ADDRESS_U16 || address_u16 > EEPROM_END_ADDRESS_U16)
     {
-        /* some error */
+        returnStatus_en = STATUS_NOT_OK;
     }
     else
     {
@@ -157,83 +162,131 @@ void EeP_WriteByte(uint16_t address_u16, uint8_t dataByte_u8)
 
         EeP_WriteAddressAndWrE(address_u16, HIGH);
     }
+
+    return returnStatus_en;
 }
 
-uint8_t EeP_ReadByte(uint16_t address_u16)
+EeP_ReturnStatus_en EeP_ReadByte(uint16_t address_u16, uint8_t * dataByte_pu8)
 {
-    uint8_t data_u8 = 0xFF;
+    EeP_ReturnStatus_en returnStatus_en = STATUS_OK;
+    *dataByte_pu8 = EEPROM_ERASED_BYTE_VALUE_U8;
 
-    if(address_u16 < EEPROM_START_ADDRESS_U16 || address_u16 > EEPROM_END_ADDRESS_U16)
+    if(NULL == dataByte_pu8 || address_u16 < EEPROM_START_ADDRESS_U16 || address_u16 > EEPROM_END_ADDRESS_U16)
     {
-        /* some error */
+        returnStatus_en = STATUS_NOT_OK;
     }
     else
     {
         EeP_WriteAddressAndWrE(address_u16, HIGH);
-        data_u8 = EeP_ReadDataOutputs();
+        *dataByte_pu8 = EeP_ReadDataOutputs();
     }
 
-    return data_u8;
+    return returnStatus_en;
 }
 
-void EeP_WriteBlock(uint16_t startAddress_u16, uint8_t *dataBlock_pu8)
+EeP_ReturnStatus_en EeP_WriteBlock(uint16_t startAddress_u16, uint8_t *dataBlock_pu8)
 {
+    EeP_ReturnStatus_en returnStatus_en = STATUS_OK;
+
     if(NULL == dataBlock_pu8 || startAddress_u16 < EEPROM_START_ADDRESS_U16 || startAddress_u16 > EEPROM_END_ADDRESS_U16)
     {
-        /* some error */
+        returnStatus_en = STATUS_NOT_OK;
     }
     else
     {
         for (uint16_t currentAddress_u16 = startAddress_u16; currentAddress_u16 < startAddress_u16 + EEPROM_BLOCK_SIZE_U16 && currentAddress_u16 <= EEPROM_END_ADDRESS_U16; currentAddress_u16++)
         {
-            EeP_WriteByte(currentAddress_u16, dataBlock_pu8[currentAddress_u16 - startAddress_u16]);
+            returnStatus_en = EeP_WriteByte(currentAddress_u16, dataBlock_pu8[currentAddress_u16 - startAddress_u16]);
+
+            if(STATUS_NOT_OK == returnStatus_en)
+            {
+                break;
+            }
         }
     }
+
+    return returnStatus_en;
 }
 
-uint8_t * EeP_ReadBlock(uint16_t startAddress_u16)
+EeP_ReturnStatus_en EeP_ReadBlock(uint16_t startAddress_u16, uint8_t * dataBlock_pu8)
 {
-    static uint8_t blockData_au8[EEPROM_BLOCK_SIZE_U16];
+    EeP_ReturnStatus_en returnStatus_en = STATUS_OK;
 
-    if(startAddress_u16 < EEPROM_START_ADDRESS_U16 || startAddress_u16 > EEPROM_END_ADDRESS_U16)
+    for(uint16_t index_u16 = 0; index_u16 < EEPROM_BLOCK_SIZE_U16; index_u16++)
     {
-        /* some error */
+        dataBlock_pu8[index_u16] = EEPROM_ERASED_BYTE_VALUE_U8;
+    }
+
+    if(NULL == dataBlock_pu8 || startAddress_u16 < EEPROM_START_ADDRESS_U16 || startAddress_u16 > EEPROM_END_ADDRESS_U16)
+    {
+        returnStatus_en = STATUS_NOT_OK;
     }
     else
     {
         for(uint16_t currentAddress_u16 = startAddress_u16; currentAddress_u16 < startAddress_u16 + EEPROM_BLOCK_SIZE_U16; currentAddress_u16++)
         {
-            blockData_au8[currentAddress_u16 - startAddress_u16] = EeP_ReadByte(currentAddress_u16);
+            returnStatus_en = EeP_ReadByte(currentAddress_u16, dataBlock_pu8 + currentAddress_u16 - startAddress_u16);
+
+            if(STATUS_NOT_OK == returnStatus_en)
+            {
+                break;
+            }
         }
     }
 
-    return blockData_au8;
+    return returnStatus_en;
 }
 
-void EeP_EraseByte(uint16_t address_u16)
+EeP_ReturnStatus_en EeP_EraseByte(uint16_t address_u16)
 {
-    EeP_WriteByte(address_u16, EEPROM_ERASED_BYTE_VALUE_U8);
+    EeP_ReturnStatus_en returnStatus_en = STATUS_OK;
+
+    returnStatus_en = EeP_WriteByte(address_u16, EEPROM_ERASED_BYTE_VALUE_U8);
+
+    return returnStatus_en;
 }
 
-void EeP_EraseBlock(uint16_t startAddress_u16)
+EeP_ReturnStatus_en EeP_EraseBlock(uint16_t startAddress_u16)
 {
+    EeP_ReturnStatus_en returnStatus_en = STATUS_OK;
+
     for(uint16_t currentAddress_u16 = startAddress_u16; currentAddress_u16 < startAddress_u16 + EEPROM_BLOCK_SIZE_U16; currentAddress_u16++)
     {
-        EeP_EraseByte(startAddress_u16);
+        returnStatus_en = EeP_EraseByte(startAddress_u16);
+
+        if(STATUS_NOT_OK == returnStatus_en)
+        {
+            break;
+        }
     }
+
+    return returnStatus_en;
 }
 
-void EeP_EraseNBlocks(uint16_t startAddress_u16, uint16_t numberOfBlocks_u16)
+EeP_ReturnStatus_en EeP_EraseNBlocks(uint16_t startAddress_u16, uint16_t numberOfBlocks_u16)
 {
+    EeP_ReturnStatus_en returnStatus_en = STATUS_OK;
+
     for(uint16_t blockIndex_u16 = 0; blockIndex_u16 < numberOfBlocks_u16; blockIndex_u16++)
     {
-        EeP_EraseBlock(startAddress_u16 + blockIndex_u16 * EEPROM_BLOCK_SIZE_U16);
+        returnStatus_en = EeP_EraseBlock(startAddress_u16 + blockIndex_u16 * EEPROM_BLOCK_SIZE_U16);
+
+        if(STATUS_NOT_OK == returnStatus_en)
+        {
+            break;
+        }
     }
+
+    return returnStatus_en;
 }
 
-void EeP_EraseChip()
+EeP_ReturnStatus_en EeP_EraseChip()
 {
-    EeP_EraseNBlocks(EEPROM_START_ADDRESS_U16, EEPROM_TOTAL_NUMBER_OF_BLOCKS_U16);
+    EeP_ReturnStatus_en returnStatus_en = STATUS_OK;
+
+    returnStatus_en = EeP_EraseNBlocks(EEPROM_START_ADDRESS_U16, EEPROM_TOTAL_NUMBER_OF_BLOCKS_U16);
+
+    return returnStatus_en;
 }
 /* ------------------------- </IMPLEMENTATIONS> ------------------------- */
 
@@ -244,55 +297,66 @@ void setup()
 
 void loop()
 {
-    uint32_t menuChoice_u32 = Utils_GetNumberFromSerial("Choice: ");
+    EeP_ReturnStatus_en returnStatus_en = STATUS_OK;
     uint32_t numberOfBlocks_u32;
     uint16_t address_u16;
     uint8_t dataByte_u8;
+    uint8_t dataBlock_au8[EEPROM_BLOCK_SIZE_U16];
+
+    uint32_t menuChoice_u32 = Utils_GetNumberFromSerial("Choice: ");
 
     switch (menuChoice_u32)
     {
     case MENU_CHOICE_READ_BYTE:
         address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
+        returnStatus_en = EeP_ReadByte(address_u16, &dataByte_u8);
+        Serial.println();
 
-        if(address_u16 >= EEPROM_START_ADDRESS_U16 && address_u16 <= EEPROM_END_ADDRESS_U16)
+        if(STATUS_NOT_OK == returnStatus_en)
         {
-            Serial.println();
-            Serial.print(Utils_AddressToHexString(address_u16));
-            Serial.print(": ");
-            Serial.println(Utils_ByteToHexString(EeP_ReadByte(address_u16)));
+            Serial.println("ERROR: The provided address is outside the chip's address space!");
         }
         else
         {
-            Serial.print("ERROR: ");
             Serial.print(Utils_AddressToHexString(address_u16));
-            Serial.println(" exceeds the chip's address space!");
+            Serial.print(": ");
+            Serial.println(Utils_ByteToHexString(dataByte_u8));
         }
         break;
 
     case MENU_CHOICE_READ_BLOCK:
         address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
+        returnStatus_en = EeP_ReadBlock(address_u16, &dataBlock_au8[0]);
+        Serial.println();
 
-        if(address_u16 >= EEPROM_START_ADDRESS_U16 && address_u16 <= EEPROM_END_ADDRESS_U16)
+        if(STATUS_NOT_OK == returnStatus_en)
         {
-            Serial.println();
-            Serial.println(Utils_BlockToString(address_u16, EeP_ReadBlock(address_u16)));
+            Serial.println("ERROR: Some addresses are outside the chip's address space!");
         }
-        else
-        {
-            Serial.print("ERROR: ");
-            Serial.print(Utils_AddressToHexString(address_u16));
-            Serial.println(" exceeds the chip's address space!");
-        }
+
+        Serial.println(Utils_BlockToString(address_u16, &dataBlock_au8[0]));
         break;
 
     case MENU_CHOICE_READ_N_BLOCKS:
         numberOfBlocks_u32 = Utils_GetNumberFromSerial("Number of blocks: ");
         address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
-
         Serial.println();
-        for (uint32_t index_u32 = 0; index_u32 < numberOfBlocks_u32; index_u32++)
+
+        for (uint32_t blockIndex_u32 = 0; blockIndex_u32 < numberOfBlocks_u32; blockIndex_u32++)
         {
-            Serial.println(Utils_BlockToString(address_u16, EeP_ReadBlock(address_u16)));
+            returnStatus_en = EeP_ReadBlock(address_u16, &dataBlock_au8[0]);
+
+            if(STATUS_NOT_OK == returnStatus_en)
+            {
+                Serial.println("ERROR: Some addresses are outside the chip's address space!");
+            }
+
+            Serial.println(Utils_BlockToString(address_u16, &dataBlock_au8[0]));
+
+            if(STATUS_NOT_OK == returnStatus_en)
+            {
+                break;
+            }
 
             address_u16 += EEPROM_BLOCK_SIZE_U16;
         }
@@ -302,9 +366,18 @@ void loop()
         address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
         dataByte_u8 = (uint8_t)Utils_GetNumberFromSerial("Data ([0x00-0xFF]/[0-255]): ");
 
-        EeP_WriteByte(address_u16, dataByte_u8);
-        Serial.println();
-        Serial.println("Written successfully");
+        returnStatus_en = EeP_WriteByte(address_u16, dataByte_u8);
+
+        if(STATUS_NOT_OK == returnStatus_en)
+        {
+            Serial.println();
+            Serial.println("ERROR: The provided address is outside the chip's address space!");
+        }
+        else
+        {
+            Serial.println();
+            Serial.println("Written successfully!");
+        }
         break;
 
     case MENU_CHOICE_WRITE_BLOCK:
@@ -312,13 +385,25 @@ void loop()
 
         for (uint8_t index_u8 = 0; index_u8 < EEPROM_BLOCK_SIZE_U16; index_u8++)
         {
-            dataByte_u8 = (uint8_t)Utils_GetNumberFromSerial("Data ([0x00-0xFF]/[0-255]): ");
-            EeP_WriteByte(address_u16, dataByte_u8);
+            char tag_ach[33] = "Data[00] ([0x00-0xFF]/[0-255]): ";
+            tag_ach[5] = '0' + index_u8 / 10;
+            tag_ach[6] = '0' + index_u8 % 10;
 
-            if (address_u16 + 1 < EEPROM_END_ADDRESS_U16)
-                address_u16++;
+            dataBlock_au8[index_u8] = (uint8_t)Utils_GetNumberFromSerial(tag_ach);
         }
-        Serial.println();
+
+        returnStatus_en = EeP_WriteBlock(address_u16, dataBlock_au8);
+
+        if(STATUS_NOT_OK == returnStatus_en)
+        {
+            Serial.println();
+            Serial.println("ERROR: Some addresses are outside the chip's address space!");
+        }
+        else
+        {
+            Serial.println();
+            Serial.println("Written successfully!");
+        }
         break;
     
     case MENU_CHOICE_WRITE_N_BLOCKS:
@@ -350,10 +435,22 @@ void loop()
         if (Serial.read() == 'y')
         {
             Serial.println("Erasing...");
-            EeP_EraseByte(address_u16);
+
+            returnStatus_en = EeP_EraseByte(address_u16);
 
             while (Serial.available() > 0)
                 (void)Serial.read();
+            
+            if(STATUS_NOT_OK == returnStatus_en)
+            {
+                Serial.println();
+                Serial.println("ERROR: The provided address is outside the chip's address space!");
+            }
+            else
+            {
+                Serial.println();
+                Serial.println("Erased successfully!");
+            }
         }
         break;
 
