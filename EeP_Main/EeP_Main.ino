@@ -194,7 +194,7 @@ EeP_ReturnStatus_en EeP_WriteBlock(uint16_t startAddress_u16, uint8_t *dataBlock
     }
     else
     {
-        for (uint16_t currentAddress_u16 = startAddress_u16; currentAddress_u16 < startAddress_u16 + EEPROM_BLOCK_SIZE_U16 && currentAddress_u16 <= EEPROM_END_ADDRESS_U16; currentAddress_u16++)
+        for (uint16_t currentAddress_u16 = startAddress_u16; currentAddress_u16 < startAddress_u16 + EEPROM_BLOCK_SIZE_U16; currentAddress_u16++)
         {
             returnStatus_en = EeP_WriteByte(currentAddress_u16, dataBlock_pu8[currentAddress_u16 - startAddress_u16]);
 
@@ -240,8 +240,13 @@ EeP_ReturnStatus_en EeP_ReadBlock(uint16_t startAddress_u16, uint8_t * dataBlock
 EeP_ReturnStatus_en EeP_EraseByte(uint16_t address_u16)
 {
     EeP_ReturnStatus_en returnStatus_en = STATUS_OK;
+    uint8_t currentByteValue_u8;
 
-    returnStatus_en = EeP_WriteByte(address_u16, EEPROM_ERASED_BYTE_VALUE_U8);
+    returnStatus_en = EeP_ReadByte(address_u16, &currentByteValue_u8);
+    if(STATUS_OK == returnStatus_en && EEPROM_ERASED_BYTE_VALUE_U8 != currentByteValue_u8)
+    {
+        returnStatus_en = EeP_WriteByte(address_u16, EEPROM_ERASED_BYTE_VALUE_U8);
+    }
 
     return returnStatus_en;
 }
@@ -252,7 +257,7 @@ EeP_ReturnStatus_en EeP_EraseBlock(uint16_t startAddress_u16)
 
     for(uint16_t currentAddress_u16 = startAddress_u16; currentAddress_u16 < startAddress_u16 + EEPROM_BLOCK_SIZE_U16; currentAddress_u16++)
     {
-        returnStatus_en = EeP_EraseByte(startAddress_u16);
+        returnStatus_en = EeP_EraseByte(currentAddress_u16);
 
         if(STATUS_NOT_OK == returnStatus_en)
         {
@@ -398,6 +403,7 @@ void loop()
         {
             Serial.println();
             Serial.println("ERROR: Some addresses are outside the chip's address space!");
+            Serial.println("The valid addresses were written successfully!");
         }
         else
         {
@@ -410,17 +416,37 @@ void loop()
         numberOfBlocks_u32 = Utils_GetNumberFromSerial("Number of blocks: ");
         address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
 
-        Serial.println();
         for (uint32_t blockIndex_u32 = 0; blockIndex_u32 < numberOfBlocks_u32; blockIndex_u32++)
         {
             for (uint8_t index_u8 = 0; index_u8 < EEPROM_BLOCK_SIZE_U16; index_u8++)
             {
-                dataByte_u8 = (uint8_t)Utils_GetNumberFromSerial("Data ([0x00-0xFF]/[0-255]): ");
-                EeP_WriteByte(address_u16, dataByte_u8);
+                char tag_ach[33] = "Data[00] ([0x00-0xFF]/[0-255]): ";
+                tag_ach[5] = '0' + index_u8 / 10;
+                tag_ach[6] = '0' + index_u8 % 10;
 
-                if (address_u16 + 1 < EEPROM_END_ADDRESS_U16)
-                    address_u16++;
+                dataBlock_au8[index_u8] = (uint8_t)Utils_GetNumberFromSerial(tag_ach);
             }
+
+            returnStatus_en = EeP_WriteBlock(address_u16, dataBlock_au8);
+
+            if(STATUS_NOT_OK == returnStatus_en)
+            {
+                Serial.println();
+                Serial.println("ERROR: Some addresses are outside the chip's address space!");
+                Serial.println("The valid addresses were written successfully!");
+            }
+            else
+            {
+                Serial.println();
+                Serial.println("Written successfully!");
+            }
+
+            if(STATUS_NOT_OK == returnStatus_en)
+            {
+                break;
+            }
+
+            address_u16 += EEPROM_BLOCK_SIZE_U16;
         }
         break;
     
@@ -428,27 +454,21 @@ void loop()
         address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
 
         Serial.println();
-        Serial.println("This will lead to permanent data loss! Are you sure you wish to continue? (y/n) ");
+        Serial.print("This will lead to permanent data loss! Are you sure you wish to continue? (y/n) _\b");
         while (Serial.available() == 0)
             ;
 
         if (Serial.read() == 'y')
         {
-            Serial.println("Erasing...");
-
             returnStatus_en = EeP_EraseByte(address_u16);
 
-            while (Serial.available() > 0)
-                (void)Serial.read();
-            
+            Serial.println();
             if(STATUS_NOT_OK == returnStatus_en)
             {
-                Serial.println();
                 Serial.println("ERROR: The provided address is outside the chip's address space!");
             }
             else
             {
-                Serial.println();
                 Serial.println("Erased successfully!");
             }
         }
@@ -458,33 +478,47 @@ void loop()
         address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
 
         Serial.println();
-        Serial.println("This will lead to permanent data loss! Are you sure you wish to continue? (y/n) ");
+        Serial.print("This will lead to permanent data loss! Are you sure you wish to continue? (y/n) _\b");
         while (Serial.available() == 0)
             ;
 
         if (Serial.read() == 'y')
         {
-            Serial.println("Erasing...");
-            EeP_EraseBlock(address_u16);
+            returnStatus_en = EeP_EraseBlock(address_u16);
 
-            while (Serial.available() > 0)
-                (void)Serial.read();
+            Serial.println();
+            if(STATUS_NOT_OK == returnStatus_en)
+            {
+                Serial.println("ERROR: Some addresses are outside the chip's address space!");
+                Serial.println("The valid addresses were erased successfully!");
+            }
+            else
+            {
+                Serial.println("Erased successfully!");
+            }
         }
         break;
 
     case MENU_CHOICE_ERASE_CHIP:
         Serial.println();
-        Serial.println("This will lead to permanent data loss! Are you sure you wish to continue? (y/n) ");
+        Serial.print("This will lead to permanent data loss! Are you sure you wish to continue? (y/n) _\b");
         while (Serial.available() == 0)
             ;
 
         if (Serial.read() == 'y')
         {
             Serial.println("Erasing...");
-            EeP_EraseChip();
+            returnStatus_en = EeP_EraseChip();
 
-            while (Serial.available() > 0)
-                (void)Serial.read();
+            Serial.println();
+            if(STATUS_NOT_OK == returnStatus_en)
+            {
+                Serial.println("ERROR: Some addresses were not properly erased!");
+            }
+            else
+            {
+                Serial.println("Erased successfully!");
+            }
         }
         break;
 

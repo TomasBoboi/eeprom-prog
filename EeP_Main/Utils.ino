@@ -115,10 +115,18 @@ uint32_t Utils_GetNumberFromSerial(const char * tag_pch)
     {
         while(Serial.available() == 0);
 
-        if('\r' != (currentChar_ch = Serial.read()) && '\n' != currentChar_ch)
+        currentChar_ch = Serial.read();
+        if('\r' != currentChar_ch && '\n' != currentChar_ch)
         {
             Serial.print(currentChar_ch);
-            number_str[index_u8++] = currentChar_ch;
+            if('\b' == currentChar_ch && 0 != index_u8)
+            {
+                index_u8--;
+            }
+            else
+            {
+                number_str[index_u8++] = currentChar_ch;
+            }
         }
         else
         {
