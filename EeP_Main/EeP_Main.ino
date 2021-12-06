@@ -39,6 +39,7 @@ typedef enum
 
     MENU_CHOICE_ERASE_BYTE,
     MENU_CHOICE_ERASE_BLOCK,
+    MENU_CHOICE_ERASE_N_BLOCKS,
     MENU_CHOICE_ERASE_CHIP,
 
     MENU_CHOICE_END
@@ -485,6 +486,32 @@ void loop()
         if (Serial.read() == 'y')
         {
             returnStatus_en = EeP_EraseBlock(address_u16);
+
+            Serial.println();
+            if(STATUS_NOT_OK == returnStatus_en)
+            {
+                Serial.println("ERROR: Some addresses are outside the chip's address space!");
+                Serial.println("The valid addresses were erased successfully!");
+            }
+            else
+            {
+                Serial.println("Erased successfully!");
+            }
+        }
+        break;
+    
+    case MENU_CHOICE_ERASE_N_BLOCKS:
+        numberOfBlocks_u32 = Utils_GetNumberFromSerial("Number of blocks: ");
+        address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
+
+        Serial.println();
+        Serial.print("This will lead to permanent data loss! Are you sure you wish to continue? (y/n) _\b");
+        while (Serial.available() == 0)
+            ;
+
+        if (Serial.read() == 'y')
+        {
+            returnStatus_en = EeP_EraseNBlocks(address_u16, numberOfBlocks_u32);
 
             Serial.println();
             if(STATUS_NOT_OK == returnStatus_en)

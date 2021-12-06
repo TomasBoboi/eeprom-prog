@@ -149,6 +149,7 @@ void Utils_PrintMenu()
     Serial.println("│ 6. Write N blocks       │");
     Serial.println("│ 7. Erase byte           │");
     Serial.println("│ 8. Erase block          │");
-    Serial.println("│ 9. Erase chip           │");
+    Serial.println("│ 9. Erase N blocks       │");
+    Serial.println("│ 10. Erase chip          │");
     Serial.println("└─────────────────────────┘");
 }
