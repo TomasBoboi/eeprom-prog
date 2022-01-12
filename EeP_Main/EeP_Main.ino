@@ -29,6 +29,8 @@ typedef enum
 {
     MENU_CHOICE_BEGIN,
 
+    MENU_CHOICE_TEXT_MODE,
+
     MENU_CHOICE_READ_BYTE,
     MENU_CHOICE_READ_BLOCK,
     MENU_CHOICE_READ_N_BLOCKS,
@@ -313,6 +315,43 @@ void loop()
 
     switch (menuChoice_u32)
     {
+    case MENU_CHOICE_TEXT_MODE:
+        address_u16 = (uint16_t)Utils_GetNumberFromSerial("Starting address (0x____): ");
+        Serial.println();
+
+        while(1)
+        {
+            while(Serial.available() == 0);
+
+            dataByte_u8 = (uint8_t)Serial.read();
+            if('\r' != dataByte_u8 && '\n' != dataByte_u8)
+            {
+                Serial.print((char)dataByte_u8);
+
+                if('\b' == dataByte_u8 && EEPROM_START_ADDRESS_U16 != address_u16)
+                {
+                    address_u16--;
+                }
+                else
+                {
+                    returnStatus_en = EeP_WriteByte(address_u16, dataByte_u8);
+                    if(STATUS_NOT_OK == returnStatus_en)
+                    {
+                        Serial.println();
+                        Serial.println("ERROR: The chip's address space has been exceeded!");
+                        break;
+                    }
+
+                    address_u16++;
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+        break;
+
     case MENU_CHOICE_READ_BYTE:
         address_u16 = (uint16_t)Utils_GetNumberFromSerial("Address (0x____): ");
         returnStatus_en = EeP_ReadByte(address_u16, &dataByte_u8);

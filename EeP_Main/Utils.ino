@@ -141,15 +141,16 @@ void Utils_PrintMenu()
 {
     Serial.println();
     Serial.println("┌─────────────────────────┐");
-    Serial.println("│ 1. Read byte            │");
-    Serial.println("│ 2. Read block           │");
-    Serial.println("│ 3. Read N blocks        │");
-    Serial.println("│ 4. Write byte           │");
-    Serial.println("│ 5. Write block          │");
-    Serial.println("│ 6. Write N blocks       │");
-    Serial.println("│ 7. Erase byte           │");
-    Serial.println("│ 8. Erase block          │");
-    Serial.println("│ 9. Erase N blocks       │");
-    Serial.println("│ 10. Erase chip          │");
+    Serial.println("│ 1. Text mode            │");
+    Serial.println("│ 2. Read byte            │");
+    Serial.println("│ 3. Read block           │");
+    Serial.println("│ 4. Read N blocks        │");
+    Serial.println("│ 5. Write byte           │");
+    Serial.println("│ 6. Write block          │");
+    Serial.println("│ 7. Write N blocks       │");
+    Serial.println("│ 8. Erase byte           │");
+    Serial.println("│ 9. Erase block          │");
+    Serial.println("│ 10. Erase N blocks      │");
+    Serial.println("│ 11. Erase chip          │");
     Serial.println("└─────────────────────────┘");
 }
